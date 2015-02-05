@@ -21,8 +21,6 @@ import osp.Hardware.*;
     @OSPProject Tasks
     
     THis is just a test modification
-    
-    Rahul : iam planning to take  constructor and destructor functions this week . learnt basics of bit bucket and Code skelton TASKCB
 */
 public class TaskCB extends IflTaskCB
 {
@@ -50,7 +48,7 @@ public class TaskCB extends IflTaskCB
     public static void init()
     {
         // your code goes here
-
+        // used to intialize static variables of class
     }
 
     /** 
@@ -67,7 +65,25 @@ public class TaskCB extends IflTaskCB
     static public TaskCB do_create()
     {
         // your code goes here
-
+        //pageTabel()
+        //set page table()
+        //threads are objeccts of type ThreadCB communications ports are objects of PortCB and files are objects of type OpenFile
+        //should use lisst or variable size array
+// task-creation time should be set equal to the current simulation time (using class HClock )
+        //staus should set to TaskLive
+        //task priority should set to some integer
+        //creation of swap file or task - MMU.getvirtualAddressBits().
+        //name of swap file should be same as task ID number
+        // use createclass FileSYS() 
+        //File has to be opened using open() of OpenFile 
+        //setSwapFile() - open file handle should be saved in task data structure
+        //incase open() fails due to lack of space then do_create() of taks_cb should dispatch a new thread and return nul
+        //create first thread with static method create()- THreadCB
+        // tasskCB objeect must be returned 
+        
+        
+        
+        
     }
 
     /**
@@ -82,7 +98,14 @@ public class TaskCB extends IflTaskCB
     public void do_kill()
     {
         // your code goes here
-
+        // The list we maintained to do_create should be used to iterate throught all the process and kill them 
+        //call do_removethread() in every thread killing process
+        //then it should iterate through list of ports and then destroy () them
+        //each destroy should call do_removeport()
+        // set status of task to taskterm
+        //deallocatememory() of class page table
+        //close() every file opened in creation process . a call to close() should result in do_remoefile()
+        //swap file created previosuly should be deleted using delete() of Filesys
     }
 
     /** 
@@ -93,7 +116,7 @@ public class TaskCB extends IflTaskCB
     public int do_getThreadCount()
     {
         // your code goes here
-
+           // thread count must be already maintained in do_create function list  and do_'kill
     }
 
     /**
@@ -106,7 +129,7 @@ public class TaskCB extends IflTaskCB
     public int do_addThread(ThreadCB thread)
     {
         // your code goes here
-
+//
     }
 
     /**
@@ -161,9 +184,9 @@ public class TaskCB extends IflTaskCB
     public void do_addFile(OpenFile file)
     {
         // your code goes here
-
+        //
     }
-
+	
     /** 
 	Remove file from the task's open files table.
 
