@@ -1,12 +1,13 @@
 package osp.Tasks;
 
-import java.util.Vector;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import osp.IFLModules.*;
 import osp.Threads.*;
 import osp.Ports.*;
 import osp.Memory.*;
 import osp.FileSys.*;
-import osp.Utilities.*;
 import osp.Hardware.*;
 
 /**
@@ -14,29 +15,35 @@ import osp.Hardware.*;
     tasks.  A task acts primarily as a container for threads and as
     a holder of resources.  Execution is associated entirely with
     threads.  The primary methods that the student will implement
-    are do_create(TaskCB) and do_kill(TaskCB).  The student can choose
-    how to keep track of which threads are part of a task.  In this
-    implementation, an array is used.
+    are do_create() and do_kill().
 
     @OSPProject Tasks
-    
-    THis is just a test modification
 */
 public class TaskCB extends IflTaskCB
 {
+    private List<OpenFile> Files;
+    private List<ThreadCB> Threads;
+    private List<PortCB> Ports;
+    
+    private PageTable PT;
+    
+    static String Warning;
+    static String Error;
+    
+    private ThreadCB TCB;
+    private OpenFile SwapPathFile;
+
+    private String SwapPath;
+    private FileSys SwapFile;		//swap file
+
     /**
-       The task constructor. Must have
-
-       	   super();
-
-       as its first statement.
+       The task constructor.
 
        @OSPProject Tasks
     */
     public TaskCB()
     {
-        // your code goes here
-
+        super();
     }
 
     /**
@@ -47,55 +54,120 @@ public class TaskCB extends IflTaskCB
     */
     public static void init()
     {
-        // your code goes here
 
     }
 
-    /** 
-        Sets the properties of a new task, passed as an argument. 
-        
-        Creates a new thread list, sets TaskLive status and creation time,
-        creates and opens the task's swap file of the size equal to the size
-	(in bytes) of the addressable virtual memory.
+    /**
+        Creates a new task and sets its properties.
 
-	@return task or null
+        @return task or null
 
         @OSPProject Tasks
     */
     static public TaskCB do_create()
     {
-        // your code goes here
+        TaskCB NewTask = new TaskCB();
+        NewTask.Threads = new ArrayList<>();
+        NewTask.Ports = new ArrayList<>();
+        NewTask.Files = new ArrayList<>();
+       
+        PageTable PT = new PageTable(NewTask);
+        NewTask.setPageTable(PT);
+        NewTask.PT = PT;
 
+        NewTask.setCreationTime(HClock.get());
+        NewTask.setStatus(TaskLive);
+        NewTask.setPriority(0);
+        String SwapPath = SwapDeviceMountPoint + Integer.toString(NewTask.getID());
+
+        
+        NewTask.SwapFile.create(SwapPath, (int)Math.pow(2.0D, MMU.getVirtualAddressBits()));	//tamanho da página deve ser 2^(número de bits do ambiente)
+        OpenFile SwapPathFile = OpenFile.open(SwapPath, NewTask);	//abrimos o swap file
+
+        NewTask.setSwapFile(SwapPathFile);	//dizemos que o swap criado acima deve ser alocado a nossa task
+
+        ThreadCB.create(NewTask);        
+        
+       
+        if (SwapPathFile == null)
+        {
+            //**** add test for SwapFileSuccess == FAILURE - if so, according to p.48, dispatch a new thread, and return null
+            // shouldn't be necessary to specifically call dispatch() for the thread, according to bottom of p.48 - footnote 1
+            Error = "There was some error in Swap file allocation";
+            NewTask.Threads.get(0).dispatch();	//caso não tenha, dispachamos a thread criada acima (posição 0 do vetor)
+            return null;
+        }
+        return NewTask;
     }
 
     /**
-       Kills the specified task and all of it threads. 
-
-       Sets the status TaskTerm, frees all memory frames 
-       (reserved frames may not be unreserved, but must be marked 
-       free), deletes the task's swap file.
-	
+       Kills the specified task and all of its threads.
+       
        @OSPProject Tasks
     */
     public void do_kill()
     {
-        // your code goes here
+        int Size = this.Threads.size();
+        while (Size > 0) 
+        {
+            this.Threads.get(Size-1).kill();
+            Size--;			
+        }
 
+        Size = this.Ports.size();
+        while (Size > 0) 
+        {
+            this.Ports.get(Size-1).destroy();
+            Size--;			
+        }
+
+        Size = this.Files.size();
+        while (Size > 0) 
+        {
+            this.Files.get(Size-1).close();
+            Size--;
+        }
+//        for (int i = 0; i < this.Threads.size(); i++)
+//        {
+//            ThreadCB T = this.Threads.get(i);
+//            T.kill();
+//            this.Threads.remove(T);
+//        }
+//        
+//        for (int i = 0; i < this.Ports.size(); i++)
+//        {
+//            PortCB P = this.Ports.get(i);
+//            P.destroy();
+//            this.Ports.remove(P);
+//        }
+//        
+//        for (int i = 0; i < this.Files.size(); i++)
+//        {
+//            OpenFile F = this.Files.get(i);
+//            F.close();
+//            this.Ports.remove(F);
+//        }
+        
+        this.SwapFile.delete(SwapDeviceMountPoint + String.valueOf(this.getID())); //deletamos o swap file
+
+        this.setStatus(TaskTerm);	//mudamos o estado da task para TaskTerm
+
+        this.getPageTable().deallocateMemory();	//e por fim desalocamos a memória da task
+        this.setStatus(TaskTerm);
+        this.PT.deallocateMemory();
+        this.SwapFile.delete(SwapDeviceMountPoint + String.valueOf(this.getID())); //deletamos o swap file
+       
     }
 
-    /** 
-	Returns a count of the number of threads in this task. 
-	
-	@OSPProject Tasks
-    */
     public int do_getThreadCount()
     {
         // your code goes here
-
+        return this.Threads.size();
     }
 
     /**
        Adds the specified thread to this task. 
+     * @param thread
        @return FAILURE, if the number of threads exceeds MaxThreadsPerTask;
        SUCCESS otherwise.
        
@@ -104,73 +176,172 @@ public class TaskCB extends IflTaskCB
     public int do_addThread(ThreadCB thread)
     {
         // your code goes here
-
+        if (Threads.size() < ThreadCB.MaxThreadsPerTask)
+        {
+            if (Threads.add(thread))
+            {
+                return SUCCESS;
+            }
+            else
+            {
+                Error = "There was some error adding the thread.";
+                atError();
+                return FAILURE;
+            }
+        }
+        else Error = "Max Threads Per Task limit exceeded!";
+        return FAILURE;
     }
 
     /**
-       Removes the specified thread from this task. 		
-
+       Removes the specified thread from this task.
+     * @param thread
+     * @return 
        @OSPProject Tasks
     */
     public int do_removeThread(ThreadCB thread)
     {
         // your code goes here
-
+        if (this.Threads.contains(thread))
+        {
+            if (this.Threads.remove(thread))
+            {
+                return SUCCESS;
+            }
+            else
+            {
+                Error = "There was some error removing thread from the list";
+                atError();
+                return FAILURE;
+            }
+        }
+        else
+        {
+            Warning = "The thread does not exist on the list";
+            atWarning();
+        }
+        return FAILURE;
     }
 
     /**
-       Return number of ports currently owned by this task. 
-
+       Return number of ports currently owned by this task.
+     * @return
        @OSPProject Tasks
     */
     public int do_getPortCount()
     {
         // your code goes here
-
+        return this.Ports.size();
     }
 
     /**
        Add the port to the list of ports owned by this task.
-	
+     * @param newPort	
+     * @return 	
        @OSPProject Tasks 
     */ 
     public int do_addPort(PortCB newPort)
     {
         // your code goes here
-
+        if (this.Ports.size() <= PortCB.MaxPortsPerTask)
+        {
+            if (this.Ports.add(newPort))
+            {
+                return SUCCESS;            
+            }
+            else
+            {
+                Error = "There was some error trying to remove the port";
+                atError();
+                return FAILURE;
+            }
+        }
+        else
+        {
+            Error="Maximum number of ports for the task is already assigned.";
+            atError();
+        }
+        return FAILURE;
     }
 
     /**
        Remove the port from the list of ports owned by this task.
-
+     * @param oldPort
+     * @return 
        @OSPProject Tasks 
     */ 
     public int do_removePort(PortCB oldPort)
     {
         // your code goes here
-
+        if (this.Ports.contains(oldPort))
+        {
+            if (this.Ports.remove(oldPort))
+            {
+                return SUCCESS;
+            }
+            else
+            {
+                Error = "There was some error removing the port";
+                atError();
+                return FAILURE;
+            }
+        }
+        else
+        {
+            atWarning();
+            Warning = "Attempt to remove unknown port for a task";
+        }
+        return FAILURE;
     }
 
     /**
        Insert file into the open files table of the task.
-
+     * @param file
        @OSPProject Tasks
     */
     public void do_addFile(OpenFile file)
     {
         // your code goes here
+        if (Files.add(file))
+        {
+            //Successfully added the file
+        }
+        else
+        {
+            Error = "There was some error adding file";
+            atError();
+        }
 
     }
 
     /** 
 	Remove file from the task's open files table.
-
+     * @param file
+     * @return 
 	@OSPProject Tasks
     */
     public int do_removeFile(OpenFile file)
     {
         // your code goes here
-
+        if (this.Files.contains(file))
+        {
+            if (this.Files.remove(file))
+            {
+                return SUCCESS;
+            }
+            else
+            {
+                Error = "There was some error removing the file from the tasks.";
+                atError();
+                return FAILURE;
+            }
+        }
+        else
+        {
+            Warning = "Attempting to remove file that does not exist!";
+            atWarning();
+        }
+        return FAILURE;
     }
 
     /**
@@ -184,7 +355,7 @@ public class TaskCB extends IflTaskCB
     public static void atError()
     {
         // your code goes here
-
+        System.out.println("There was an error: "+Error);
     }
 
     /**
@@ -198,16 +369,11 @@ public class TaskCB extends IflTaskCB
     public static void atWarning()
     {
         // your code goes here
-
+        System.out.println("There was an error: "+Warning);
     }
 
 
     /*
        Feel free to add methods/fields to improve the readability of your code
     */
-
 }
-
-/*
-      Feel free to add local classes to improve the readability of your code
-*/

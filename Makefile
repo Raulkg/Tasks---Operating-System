@@ -11,7 +11,7 @@ build: $(CLASSES)
 
 
 $(CLASSES): $(SOURCES) 
-	javac -g -classpath .:$(CLASSPATH):OSP.jar -d . $(SOURCES)
+	javac -g  -Xlint:unchecked -classpath .:$(CLASSPATH):OSP.jar -d . $(SOURCES)
 
 run: 	build
 	java -classpath .:$(CLASSPATH):OSP.jar osp.OSP -noGUI $(OPTS)
