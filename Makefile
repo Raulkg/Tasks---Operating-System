@@ -10,6 +10,7 @@ build: $(CLASSES)
 		|| (echo "Something wrong: Can't create the directory for the *.class files"; exit 1))
 
 
+
 $(CLASSES): $(SOURCES) 
 	javac -g  -Xlint:unchecked -classpath .:$(CLASSPATH):OSP.jar -d . $(SOURCES)
 
