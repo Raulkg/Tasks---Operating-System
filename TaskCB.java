@@ -127,35 +127,14 @@ public class TaskCB extends IflTaskCB
             this.Files.get(Size-1).close();
             Size--;
         }
-//        for (int i = 0; i < this.Threads.size(); i++)
-//        {
-//            ThreadCB T = this.Threads.get(i);
-//            T.kill();
-//            this.Threads.remove(T);
-//        }
-//        
-//        for (int i = 0; i < this.Ports.size(); i++)
-//        {
-//            PortCB P = this.Ports.get(i);
-//            P.destroy();
-//            this.Ports.remove(P);
-//        }
-//        
-//        for (int i = 0; i < this.Files.size(); i++)
-//        {
-//            OpenFile F = this.Files.get(i);
-//            F.close();
-//            this.Ports.remove(F);
-//        }
         
-        this.SwapFile.delete(SwapDeviceMountPoint + String.valueOf(this.getID())); //deletamos o swap file
+        this.SwapFile.delete(SwapDeviceMountPoint + String.valueOf(this.getID()));
 
-        this.setStatus(TaskTerm);	//mudamos o estado da task para TaskTerm
+        this.setStatus(TaskTerm);
 
-        this.getPageTable().deallocateMemory();	//e por fim desalocamos a memória da task
+        this.getPageTable().deallocateMemory();
         this.setStatus(TaskTerm);
         this.PT.deallocateMemory();
-        this.SwapFile.delete(SwapDeviceMountPoint + String.valueOf(this.getID())); //deletamos o swap file
        
     }
 
