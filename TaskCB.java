@@ -81,10 +81,10 @@ public class TaskCB extends IflTaskCB
         String SwapPath = SwapDeviceMountPoint + Integer.toString(NewTask.getID());
 
         
-        NewTask.SwapFile.create(SwapPath, (int)Math.pow(2.0D, MMU.getVirtualAddressBits()));	//tamanho da página deve ser 2^(número de bits do ambiente)
-        OpenFile SwapPathFile = OpenFile.open(SwapPath, NewTask);	//abrimos o swap file
+        NewTask.SwapFile.create(SwapPath, (int)Math.pow(2.0D, MMU.getVirtualAddressBits()));
+        OpenFile SwapPathFile = OpenFile.open(SwapPath, NewTask);
 
-        NewTask.setSwapFile(SwapPathFile);	//dizemos que o swap criado acima deve ser alocado a nossa task
+        NewTask.setSwapFile(SwapPathFile);
 
         ThreadCB.create(NewTask);        
         
